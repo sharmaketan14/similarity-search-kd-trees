@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>KD Tree Visualization</title>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 20px;
+    }
+    canvas {
+      background: #fff;
+      border: 2px solid #333;
+      margin-top: 20px;
+    }
+    form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    input[type="number"] {
+      width: 70px;
+      padding: 5px;
+    }
+    button {
+      padding: 5px 10px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h2>KD Tree Insertion Visualization</h2>
+  <form id="pointForm">
+    <label>X: <input type="number" id="xInput" min="0" max="1000" required></label>
+    <label>Y: <input type="number" id="yInput" min="0" max="1000" required></label>
+    <button type="submit">Insert Point</button>
+  </form>
+  <form id="searchForm">
+    <label>X: <input type="number" id="xsInput" min="0" max="1000" required></label>
+    <label>Y: <input type="number" id="ysInput" min="0" max="1000" required></label>
+    <button type="submit">Node Search</button>
+  </form>
+  <form id="nearestForm">
+    <label>X: <input type="number" id="xnInput" min="0" max="1000" required></label>
+    <label>Y: <input type="number" id="ynInput" min="0" max="1000" required></label>
+    <button type="submit">Nearest Neighbor Search</button>
+  </form>
+  <form id="nearestFormBrute">
+    <label>X: <input type="number" id="xbInput" min="0" max="1000" required></label>
+    <label>Y: <input type="number" id="ybInput" min="0" max="1000" required></label>
+    <button type="submit">Brute Nearest Neighbor Search</button>
+  </form>
+  <button id="randomPointsButton">Generate 10000 Random Points</button>
+  <canvas id="canvas" width="1000" height="1000"></canvas>
+
+  <script type="module">
+    import { KDPoint, KDTree } from './KDTree.js';
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const WIDTH = canvas.width;
+    const HEIGHT = canvas.height;
+
+    const drawAxes = () => {
+      ctx.strokeStyle = '#aaa';
+      ctx.lineWidth = 1;
+
+      // X-axis (horizontal line at top)
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(WIDTH, 0);
+      ctx.stroke();
+
+      // Y-axis (vertical line at left)
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, HEIGHT);
+      ctx.stroke();
+
+      // Tick marks and labels
+      ctx.fillStyle = '#333';
+      ctx.font = "12px sans-serif";
+
+      const xStep = 100;
+      for (let x = 0; x <= WIDTH; x += xStep) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 5);
+        ctx.stroke();
+        ctx.fillText(x.toString(), x + 2, 15);
+      }
+
+      const yStep = 100;
+      for (let y = 0; y <= HEIGHT; y += yStep) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(5, y);
+        ctx.stroke();
+        ctx.fillText(y.toString(), 8, y + 4);
+      }
+    };
+
+
+    let root = null;
+    const tree = new KDTree(root, 2);
+    const points = [];
+    let nearestNeighbor = null;
+
+    const drawPoint = (point, color = 'red') => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(point[0], point[1], 5, 0, 2 * Math.PI);
+      ctx.fill();
+    };
+
+    const render = () => {
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+      drawAxes();
+      tree.draw(ctx, root);
+      
+      if (nearestNeighbor) {
+        drawPoint(nearestNeighbor, 'blue');
+      }
+    };
+
+    document.getElementById("pointForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const x = parseInt(document.getElementById("xInput").value);
+      const y = parseInt(document.getElementById("yInput").value);
+
+      const newPoint = new KDPoint(2);
+      newPoint.points = [x, y];
+      points.push(newPoint);
+      root = tree.insert_node(root, newPoint, 0);
+
+      render();
+      e.target.reset();
+    });
+
+    document.getElementById("searchForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const x = parseInt(document.getElementById("xsInput").value);
+      const y = parseInt(document.getElementById("ysInput").value);
+      
+      const newPoint = new KDPoint(2);
+      newPoint.points = [x, y];
+      const found = tree.search_node(root, newPoint, 0);
+
+      if (found) {
+        alert("Point found in KD-Tree!");
+      } else {
+        alert("Point not found in KD-Tree.");
+      }
+
+      render();
+      e.target.reset();
+    });
+
+    document.getElementById("nearestForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const x = parseInt(document.getElementById("xnInput").value);
+      const y = parseInt(document.getElementById("ynInput").value);
+      
+      const newPoint = new KDPoint(2);
+      newPoint.points = [x, y];
+      const start = performance.now();
+      const [distance, nearest_node] = tree.nearest_neighbour_search_node(root, newPoint, 0);
+      const end = performance.now();
+      
+      if (nearest_node) {
+        nearestNeighbor = nearest_node.point.points;
+        console.log('Nearest Neighbor:', nearestNeighbor);
+        console.log(`Search took ${(end - start).toFixed(3)} ms`);
+        alert(`Nearest Neighbor Found at (${nearestNeighbor[0]}, ${nearestNeighbor[1]})\nSearch Time: ${(end - start).toFixed(3)} ms`);
+      }
+
+      render();
+      e.target.reset();
+    });
+
+    document.getElementById("nearestFormBrute").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const x = parseInt(document.getElementById("xbInput").value);
+      const y = parseInt(document.getElementById("ybInput").value);
+      
+      const newPoint = new KDPoint(2);
+      newPoint.points = [x, y];
+      const start = performance.now();
+      const [distance, nearest_node] = tree.brute_force_nearest_neighbour_search(newPoint);
+      const end = performance.now();
+      
+      if (nearest_node) {
+        nearestNeighbor = nearest_node.point.points;
+        console.log('Nearest Neighbor:', nearestNeighbor);
+        console.log(`Search took ${(end - start).toFixed(3)} ms`);
+        alert(`Nearest Neighbor Found at (${nearestNeighbor[0]}, ${nearestNeighbor[1]})\nSearch Time: ${(end - start).toFixed(3)} ms`);
+      }
+
+      render();
+      e.target.reset();
+    });
+
+    document.getElementById("randomPointsButton").addEventListener("click", () => {
+      points.length = 0;
+      for (let i = 0; i < 10000; i++) {
+        const x = Math.floor(Math.random() * WIDTH);
+        const y = Math.floor(Math.random() * HEIGHT);
+
+        const newPoint = new KDPoint(2);
+        newPoint.points = [x, y];
+        points.push(newPoint);
+        root = tree.insert_node(root, newPoint, 0);
+      }
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

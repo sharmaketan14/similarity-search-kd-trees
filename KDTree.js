@@ -1,10 +1,10 @@
-class KDPoint {
+export class KDPoint {
     constructor(dims) {
         this.points = new Array(dims);
     }
 }
 
-class KDNode {
+export class KDNode {
     constructor(point) {
         this.point = point;
         this.left = null;
@@ -12,38 +12,24 @@ class KDNode {
     }
 }
 
-class KDTree {
+export class KDTree {
     constructor(root, dims) {
         this.dims = dims;
-        this.root = root
+        this.root = root;
+        this.all_points = []
     }
 
     insert_node(root, point, depth) {
-        if(!root) {
-            return new KDNode(point);
-        }
+        if (!root) return new KDNode(point);
 
         const curr_hyperplane = depth % this.dims;
-        
-        if(root.point.points[curr_hyperplane] > point.points[curr_hyperplane]) {
+        if (root.point.points[curr_hyperplane] > point.points[curr_hyperplane]) {
             root.left = this.insert_node(root.left, point, depth + 1);
         } else {
             root.right = this.insert_node(root.right, point, depth + 1);
         }
 
         return root;
-    }
-
-    print_tree(root, depth = 0) {
-        if(!root) {
-            return;
-        }
-
-        console.log(`Depth: ${depth}, Point: ${JSON.stringify(root.point.points)}`);
-        this.print_tree(root.left, depth + 1);
-        this.print_tree(root.right, depth + 1);
-
-        return;
     }
 
     are_same(point1, point2) {
@@ -132,46 +118,58 @@ class KDTree {
 
         return curr_best;
     }
-};
 
-const point_f = [
-    [479, 449],
-    [70, 721],
-    [343, 858],
-    [207, 313],
-    [751, 177],
-    [888, 585],
-    [615, 40],
-]
-const points = []
+    brute_force_nearest_neighbour_search(point) {
+        let min_dis = 1e9;
+        let min_point = null;
 
-for(point of point_f) {
-    new_point = new KDPoint(2);
-    new_point.points = point;
-    points.push(new_point);
+        for(let i = 0; i < this.all_points.length; i++) {
+            const point1 = new KDPoint(2)
+            point1.points = this.all_points[i];
+            
+            const euc_dist = this.eucledian_dist(point.points, point1.points)
+            if (euc_dist < min_dis) {
+                min_dis = euc_dist;
+                min_point = point1;
+            }
+        }
+
+        const nearest_node = min_point ? new KDNode(min_point) : null;
+
+        return [min_dis, nearest_node];
+    }
+
+    draw(ctx, node, depth = 0, xMin = 0, yMin = 0, xMax = ctx.canvas.width, yMax = ctx.canvas.height) {
+        if (!node) return;
+
+        const [x, y] = node.point.points;
+        const axis = depth % 2;
+
+        this.all_points.push([x, y])
+        ctx.beginPath();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = axis === 0 ? "red" : "blue";
+
+        if (axis === 0) {
+            ctx.moveTo(x, yMin);
+            ctx.lineTo(x, yMax);
+        } else {
+            ctx.moveTo(xMin, y);
+            ctx.lineTo(xMax, y);
+        }
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = "black";
+        ctx.fill();
+
+        if (axis === 0) {
+            this.draw(ctx, node.left, depth + 1, xMin, yMin, x, yMax);
+            this.draw(ctx, node.right, depth + 1, x, yMin, xMax, yMax);
+        } else {
+            this.draw(ctx, node.left, depth + 1, xMin, yMin, xMax, y);
+            this.draw(ctx, node.right, depth + 1, xMin, y, xMax, yMax);
+        }
+    }
 }
-
-let root = null
-
-tree = new KDTree(root, 2)
-
-for(point of points) {
-    root = tree.insert_node(root, point, 0);
-}
-
-tree.print_tree(root, 0);
-
-
-search_point = new KDPoint(2)
-search_point.points = [800,600]
-
-exist_node = tree.search_node(root, search_point, 0);
-
-console.log(exist_node)
-
-search_point = new KDPoint(2)
-search_point.points = [200,600]
-
-closest_dist = tree.nearest_neighbour_search_node(root, search_point, 0);
-
-console.log(closest_dist[0], closest_dist[1].point)
