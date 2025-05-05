@@ -9,7 +9,7 @@ The goal of this project is to demonstrate **similarity search** concepts using 
 ## 🖼 Demo Preview
 
 > Nearest Neighbor found using KD-Tree  
-> Search Time: 1.7 ms with 10,000 points
+> Search Time: 0.1 ms to 0.4 ms with 10,000 points
 
 ---
 
